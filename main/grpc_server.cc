@@ -10,6 +10,12 @@
 #include "main/demo.grpc.pb.h"
 #endif
 
+#include <ctime>
+#include <list>
+#include<fstream>
+#include<sstream>
+
+
 using grpc::Server;
 using grpc::ServerBuilder;
 using grpc::ServerContext;
@@ -20,31 +26,121 @@ using mygrpc::User;
 using mygrpc::Reply;
 using namespace std;
 
+const string fileName = "users.txt";
+const string USERNAME_OR_PASSWORD_ERROR = "用户名或者密码错误";
+
+string buildToken();
+bool queryUser(const std::string& name, const std::string& pwd, list<User> userList);
+list<User> loadUserInfo();
+
 class LoginServiceImpl final : public UserServer::Service {
 
     Status Login(ServerContext* context, const User* user,
                     Reply* reply) override {
-        
+        list<User> userList;
+        userList = loadUserInfo();
+
+        bool isExist;
+        isExist = queryUser(user->name(), user->password(), userList);
+        if(isExist){
+            const string token = buildToken();
+            std::string prefix("Hello ");
+            reply->set_message(prefix + user->name());
+            reply->set_token(token);
+            user_map.insert(pair<string,string>(token, user->name()));
+        }else{
+            reply->set_message(USERNAME_OR_PASSWORD_ERROR);
+        }
+
         return Status::OK;
     }
-    
+
     Status Add(ServerContext* context, const User* user,
                  Reply* reply) override {
-        
+
         return Status::OK;
     }
     Status UserStatusListen (ServerContext* context,
                      ServerReaderWriter<User, User>* stream) override {
-        
+
       return Status::OK;
     }
-    
+
 private:
     std::mutex mu_;
     std::vector<User> login_users;
     std::vector<ServerReaderWriter<User, User>*> client_streams;
     std::map<string, string> user_map;
 };
+
+
+
+/**
+ 模拟从数据库中加载对象的逻辑，实际上是从文本文件读取
+ */
+list<User> loadUserInfo(){
+    list<User> userList;
+    ifstream in;
+    in.open(fileName);
+    string sline;
+    User user;
+    while (getline(in, sline))
+    {
+        string id;
+        string name;
+        string password;
+        istringstream sin(sline);
+        sin >> id >> name >> password;
+
+        user.set_id(id);
+        user.set_name(name);
+        user.set_password(password);
+        userList.push_back(user);
+    }
+    return userList;
+}
+
+/**
+ 查询用户是否存在
+ */
+bool queryUser(const std::string& name, const std::string& pwd, const list<User> userList){
+    list<User>::const_iterator it;
+    for(it = userList.begin(); it != userList.end(); it++){
+        if(it->name() == name && it->password() == pwd){
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ 若登录成功，返回给客户端一个token
+ */
+string buildToken(){
+    const int LEN = 62;
+    int iLen = 10;
+    char g_arrCharElem[LEN] = {
+        '0', '1', '2','3', '4', '5','6', '7', '8','9',
+        'A', 'B', 'C','D', 'E', 'F','G', 'H', 'I','J',
+        'K', 'L', 'M','N', 'O', 'P','Q', 'R', 'S','T',
+        'U', 'V', 'W','X', 'Y', 'Z','a', 'b', 'c','d',
+        'e', 'f', 'g','h', 'i', 'j','k', 'l', 'm','n',
+        'o', 'p', 'q','r', 's', 't','u', 'v', 'w','x',
+        'y', 'z'
+    };
+    char* token = new char[iLen + 1];
+    token[iLen] = '\0';
+    srand((unsigned)time(0));
+    int iRand = 0;
+    for (int i = 0; i < iLen; ++i) {
+     iRand = rand() % LEN;   // iRand = 0 - 61
+     token[i] = g_arrCharElem[iRand];
+    }
+    delete[] token;
+    return token;
+}
+
+
 
 void RunServer() {
   std::string address = "0.0.0.0";

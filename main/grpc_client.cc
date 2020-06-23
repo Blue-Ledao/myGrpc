@@ -31,7 +31,24 @@ class LoginClient {
         : stub_(UserServer::NewStub(channel)) {}
 
     std::string login(const std::string& username, const std::string& pwd) {
-      
+        User user;
+        user.set_name(username);
+        user.set_password(pwd);
+
+        
+        Reply reply;
+        ClientContext context;
+
+        Status status = stub_->Login(&context, user, &reply);
+
+        if (status.ok()) {
+            currentUser.set_token(reply.token());
+          return reply.message();
+        } else {
+          std::cout << status.error_code() << ": " << status.error_message()
+                    << std::endl;
+          return "RPC failed";
+        }
     }
     
     std::string add(const std::string& username, const std::string& pwd) {
@@ -47,6 +64,14 @@ private:
 };
 
 int main(int argc, char** argv) {
+    std::string address = "localhost";
+    std::string port = "50051";
+    std::string server_address = address + ":" + port;
+    std::cout << "Client querying server address: " << server_address << std::endl;
+      
+    LoginClient loginClient(grpc::CreateChannel(
+        server_address, grpc::InsecureChannelCredentials()));
+    
     while (true){
           int opt = 0;
           std::cout << "主菜单" << std::endl;
@@ -75,11 +100,11 @@ int main(int argc, char** argv) {
                       std::cout << "请输入用密码 : "; std::cin >> pwd;
                       currentUser.set_name(username);
                       
-                      std::string reply = "";
-                      
+                      std::string reply = loginClient.login(username, pwd);
                       std::cout << reply << std::endl;
                       if(reply != USERNAME_OR_PASSWORD_ERROR){
-                          std::cout << "登录成功，输入'logout'退出当前登录，并返回主菜单...." << std::endl;
+                          std::cout << "登录成功，token是：" << currentUser.token() << "，输入'logout'退出当前登录，并返回主菜单...." << std::endl;
+                          loginClient.userStatusListen();
                           while(true){
                               std::string command;
                               std::cin >> command;
