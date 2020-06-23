@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package mygrpc;
+
+// 与用户相关的server.
+service UserServer {
+  // 添加用户
+  rpc Add (User) returns (Reply) {}
+
+  // 登录
+  rpc Login (User) returns (Reply) {}
+
+  rpc UserStatusListen (stream User ) returns (stream User) {}
+}
+
+// 请求message：user.
+message User {
+  string id = 1;
+  string name = 2;
+  string password = 3;
+  string token = 4;
+}
+
+// 响应message：reply
+message Reply {
+  string message = 1;
+  string token = 2;
+}
