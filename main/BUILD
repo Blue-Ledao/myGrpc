@@ -19,6 +19,14 @@ cc_grpc_library(
     deps = [":demo_cc_proto"],
 )
 
+cc_library(
+    name="grpc_server_test",
+    srcs=["token.cc"],
+    hdrs=["token.h"],
+    defines = ["BAZEL_BUILD"],
+    visibility = ["//visibility:public"],
+)
+
 
 cc_binary(
     name = 'grpc_client',
@@ -28,6 +36,7 @@ cc_binary(
         ":demo_cc_grpc",
         "@com_github_grpc_grpc//:grpc++",
     ],
+    visibility = ["//visibility:public"],
 )
 
 cc_binary(
@@ -38,4 +47,5 @@ cc_binary(
         ":demo_cc_grpc",
         "@com_github_grpc_grpc//:grpc++",
     ],
+    visibility = ["//visibility:public"],
 )
