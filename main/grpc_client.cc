@@ -40,7 +40,6 @@ class LoginClient {
         ClientContext context;
 
         Status status = stub_->Login(&context, user, &reply);
-
         if (status.ok()) {
             currentUser.set_token(reply.token());
           return reply.message();
@@ -71,7 +70,32 @@ class LoginClient {
     }
     
     void userStatusListen() {
-        
+        ClientContext context;
+        std::shared_ptr<ClientReaderWriter<User, User> > stream(
+            stub_->UserStatusListen(&context));
+
+        std::thread writer([stream]() {
+            std::cout << "Sending message " << currentUser.name()
+                    << std::endl;
+            stream->Write(currentUser);
+            stream->WritesDone();
+        });
+
+        User server_user;
+        while (stream->Read(&server_user)) {
+          std::cout << "Got message " << server_user.name() << server_user.token()
+                  << std::endl;
+            if(server_user.token() != currentUser.token()){
+                std::cout << "当前用户已在其他设备登录：" << server_user.name()
+                << std::endl;
+                return;
+            }
+        }
+        writer.join();
+        Status status = stream->Finish();
+        if (!status.ok()) {
+          std::cout << "RouteChat rpc failed." << std::endl;
+        }
     }
     
 private:

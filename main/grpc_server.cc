@@ -74,7 +74,19 @@ class LoginServiceImpl final : public UserServer::Service {
     }
     Status UserStatusListen (ServerContext* context,
                      ServerReaderWriter<User, User>* stream) override {
+        User user;
+        //for ( ServerReaderWriter<User, User>* s : client_streams) {
+            while (stream->Read(&user)) {
+                std::unique_lock<std::mutex> lock(mu_);
+                for (User& u : login_users) {
+                    u.set_token(buildToken());
+                    stream->Write(u);
+                }
+                login_users.push_back(user);
+            }
 
+        client_streams.push_back(stream);
+        
       return Status::OK;
     }
 
