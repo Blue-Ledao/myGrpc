@@ -52,7 +52,22 @@ class LoginClient {
     }
     
     std::string add(const std::string& username, const std::string& pwd) {
-      
+      User user;
+      user.set_name(username);
+      user.set_password(pwd);
+
+      Reply reply;
+      ClientContext context;
+
+      Status status = stub_->Add(&context, user, &reply);
+
+      if (status.ok()) {
+        return reply.message();
+      } else {
+        std::cout << status.error_code() << ": " << status.error_message()
+                  << std::endl;
+        return "RPC failed";
+      }
     }
     
     void userStatusListen() {
@@ -86,7 +101,7 @@ int main(int argc, char** argv) {
                       std::cout << "请输入用户名 : "; std::cin >> username;
                       std::cout << "请输入用密码 : "; std::cin >> pwd;
                                           
-                      std::string reply = "";
+                      std::string reply = loginClient.add(username, pwd);
                       if(reply != ADD_ERROR){
                           std::cout << "注册用户成功！\t"  <<  std::endl;
                       }else{

@@ -28,7 +28,10 @@ using namespace std;
 
 const string fileName = "users.txt";
 const string USERNAME_OR_PASSWORD_ERROR = "用户名或者密码错误";
+const string NAME_EXIST_ERROR = "用户已存在";
 
+int getMaxId();
+bool isDuplicate(const std::string& name, list<User> userList);
 string buildToken();
 bool queryUser(const std::string& name, const std::string& pwd, list<User> userList);
 list<User> loadUserInfo();
@@ -57,7 +60,16 @@ class LoginServiceImpl final : public UserServer::Service {
 
     Status Add(ServerContext* context, const User* user,
                  Reply* reply) override {
-
+        list<User> userList;
+        userList = loadUserInfo();
+        if(isDuplicate(user->name(), userList)){
+            reply->set_message(NAME_EXIST_ERROR);
+            return Status::OK;
+        }
+        string id = to_string(getMaxId());
+        ofstream file_writer("./" + fileName, ios_base::app);
+        file_writer <<  id << setw(10) << user->name() << setw(10) << user->password() << "\t" << endl;
+        file_writer.close();
         return Status::OK;
     }
     Status UserStatusListen (ServerContext* context,
@@ -138,6 +150,45 @@ string buildToken(){
     }
     delete[] token;
     return token;
+}
+
+/**
+ 获取当前用户中最大的id，添加user时，模拟自增主键
+ */
+int getMaxId(){
+    int maxId = 0;
+    list<User> userList;
+    userList = loadUserInfo();
+    list<User>::const_iterator it;
+    int id;
+    for(it = userList.begin(); it != userList.end(); it++){
+        istringstream ss;
+        ss.str(it->id());
+        ss >> id;
+        
+        ofstream file_writer("./id.txt", ios_base::app);
+        file_writer <<  it->id() << setw(10)<<  it->name() << setw(10) <<  it->password() << setw(10) <<  id << setw(10) <<  maxId << setw(10) << "\t" << endl;
+        file_writer.close();
+        
+        
+        if(maxId < id){
+            maxId = id;
+        }
+    }
+    
+    return maxId + 1;
+}
+/**
+ 注册用户时，判断用户名是否重复
+ */
+bool isDuplicate(const std::string& name, list<User> userList){
+    list<User>::const_iterator it;
+    for(it = userList.begin(); it != userList.end(); it++){
+        if(it->name() == name){
+            return true;
+        }
+    }
+    return false;
 }
 
 
